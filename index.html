@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>課題管理サイト</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    input, button { padding: 8px; font-size: 16px; }
+    li.done { text-decoration: line-through; color: gray; }
+  </style>
+</head>
+<body>
+    <h1>📚 課題管理</h1>
+    <input id="taskInput" placeholder="課題を入力..." />
+    <input id="dueDateInput" type="date" />
+    <button onclick="addTask()">追加</button>
+
+  <ul id="taskList"></ul>
+
+  <script>
+    window.onload = function () {
+      loadTasks();
+    };
+  
+    function addTask() {
+      const taskInput = document.getElementById("taskInput");
+      const dateInput = document.getElementById("dueDateInput");
+      const taskText = taskInput.value.trim();
+      const dueDate = dateInput.value;
+  
+      if (taskText === "") return;
+  
+      const task = { text: taskText, date: dueDate, done: false };
+  
+      // 課題を取得・追加・並び替え・保存
+      const tasks = loadTasksFromStorage();
+      tasks.push(task);
+      sortTasksByDate(tasks);
+      saveTasksToStorage(tasks);
+  
+      renderTaskList(tasks);
+  
+      taskInput.value = "";
+      dateInput.value = "";
+    }
+  
+    function createTaskElement(task) {
+      const li = document.createElement("li");
+      const span = document.createElement("span");
+      const due = task.date;
+    let displayDate = due || "なし";
+    let color = "black";
+
+    if (due) {
+      const today = new Date();
+      const dueDate = new Date(due);
+      const diffDays = Math.floor((dueDate - today) / (1000 * 60 * 60 * 24));
+
+      if (diffDays <= 0) {
+        color = "red"; // 今日または過ぎてる
+      } else if (diffDays === 1) {
+        color = "orange"; // 明日
+      }
+    }
+
+    span.textContent = `${task.text}（期限: ${displayDate}）`;
+    span.style.color = color;
+  
+      if (task.done) li.classList.add("done");
+  
+      span.addEventListener("click", () => {
+        li.classList.toggle("done");
+        updateDoneStatus(span.textContent, li.classList.contains("done"));
+      });
+  
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "削除";
+      delBtn.style.marginLeft = "10px";
+      delBtn.addEventListener("click", () => {
+        deleteTask(span.textContent);
+      });
+  
+      li.appendChild(span);
+      li.appendChild(delBtn);
+      return li;
+    }
+  
+    function renderTaskList(tasks) {
+      const list = document.getElementById("taskList");
+      list.innerHTML = "";
+      tasks.forEach(task => {
+        const li = createTaskElement(task);
+        list.appendChild(li);
+      });
+    }
+  
+    function sortTasksByDate(tasks) {
+      tasks.sort((a, b) => {
+        if (!a.date) return 1;
+        if (!b.date) return -1;
+        return new Date(a.date) - new Date(b.date);
+      });
+    }
+  
+    function saveTasksToStorage(tasks) {
+      localStorage.setItem("tasks", JSON.stringify(tasks));
+    }
+  
+    function loadTasksFromStorage() {
+      const saved = localStorage.getItem("tasks");
+      if (!saved) return [];
+      return JSON.parse(saved);
+    }
+  
+    function loadTasks() {
+      const tasks = loadTasksFromStorage();
+      sortTasksByDate(tasks);
+      renderTaskList(tasks);
+    }
+  
+    function updateDoneStatus(displayText, isDone) {
+      const tasks = loadTasksFromStorage();
+      const updated = tasks.map(task => {
+        const fullText = `${task.text}（期限: ${task.date || "なし"}）`;
+        if (fullText === displayText) {
+          return { ...task, done: isDone };
+        }
+        return task;
+      });
+      saveTasksToStorage(updated);
+    }
+  
+    function deleteTask(displayText) {
+      const tasks = loadTasksFromStorage();
+      const updated = tasks.filter(task => {
+        const fullText = `${task.text}（期限: ${task.date || "なし"}）`;
+        return fullText !== displayText;
+      });
+      saveTasksToStorage(updated);
+      renderTaskList(updated);
+    }
+  </script>
